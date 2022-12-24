@@ -1,3 +1,5 @@
+include Makefile.db.mk
+
 up:
 	@docker-compose up -d
 
