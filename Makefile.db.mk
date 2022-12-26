@@ -4,7 +4,7 @@ migrate:
 	@$(migrator) up
 
 rollback:
-	@$(migrator) down
+	@$(migrator) down --count 1
 
 new_migration:
 	@$(migrator) create $(name) --sql-file
