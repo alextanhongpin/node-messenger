@@ -6,6 +6,7 @@ create schema messenger;
 create table messenger.users (
 	id uuid default gen_random_uuid(),
 	name text not null,
+	image_url text null,
 
 	primary key (id),
 	created_at timestamptz not null default current_timestamp,
