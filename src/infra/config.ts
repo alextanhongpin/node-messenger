@@ -14,3 +14,7 @@ export const db = {
   password: process.env.DB_PASS ?? "",
   debug: true,
 };
+
+export const server = {
+  port: Number(process.env.PORT ?? 3000),
+};
