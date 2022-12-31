@@ -61,12 +61,19 @@ export class UnauthorizedError extends AppError<string> {
   }
 }
 
-export class NotFoundError extends AppError<{ id: unknown; entity: string }> {
-  constructor(entity: string, id: unknown, options?: ErrorOptions) {
+export class NotFoundError extends AppError<{
+  where: Record<string, unknown>;
+  entity: string;
+}> {
+  constructor(
+    entity: string,
+    where: Record<string, unknown>,
+    options?: ErrorOptions
+  ) {
     super(`${entity} not found`, options);
     this.kind = ErrorKind.NotFound;
     this.code = "entity.not_found";
-    this.params = { id, entity };
+    this.params = { entity, where };
   }
 }
 
