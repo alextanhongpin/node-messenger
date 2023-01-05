@@ -12,9 +12,10 @@ async function main() {
 
   app.use(authHandler(config.jwt.secret));
 
-  const api = create(sql, (userId: string) =>
-    sign(config.jwt.secret, { userId } as Claims)
-  );
+  const createToken = (userId: string) =>
+    sign(config.jwt.secret, { userId } as Claims);
+
+  const api = create(sql, createToken);
   app.use("/", api);
 
   // NOTE: This must be the last route.
