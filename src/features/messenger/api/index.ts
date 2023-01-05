@@ -1,7 +1,8 @@
 import { NextFunction, Request, Response } from "express";
+import type { TokenCreator, UserId } from "features/messenger/types";
+import { MessengerUseCase } from "features/messenger/usecase";
 
-import type { TokenCreator } from "./types";
-import { MessengerUseCase } from "./usecase";
+import { User } from "./types";
 
 // User.
 function postRegisterUserHandler(
@@ -48,7 +49,7 @@ function postMeHandler(useCase: MessengerUseCase) {
       const user = await useCase.findUser(res.locals.userId);
       res.status(200).json({
         data: {
-          user,
+          user: User.from(res.locals.userId as UserId, user),
         },
       });
     } catch (err) {
@@ -63,7 +64,7 @@ function getSuggestedUsersHandler(useCase: MessengerUseCase) {
       const users = await useCase.findSuggestedUsers(res.locals.userId);
       res.status(200).json({
         data: {
-          users,
+          users: User.fromArray(res.locals.userId as UserId, users),
         },
       });
     } catch (err) {
@@ -78,7 +79,7 @@ function searchUsersHandler(useCase: MessengerUseCase) {
       const users = await useCase.searchUsers(req.query.name as string);
       res.status(200).json({
         data: {
-          users,
+          users: User.fromArray(res.locals.userId as UserId, users),
         },
       });
     } catch (err) {
