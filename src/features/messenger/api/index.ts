@@ -1,8 +1,15 @@
 import { NextFunction, Request, Response } from "express";
-import type { TokenCreator, UserId } from "features/messenger/types";
+import type { TokenCreator } from "features/messenger/types";
 import { MessengerUseCase } from "features/messenger/usecase";
 
-import { User } from "./types";
+import {
+  toChat,
+  toChatMessage,
+  toChatMessages,
+  toChats,
+  toUser,
+  toUsers,
+} from "./types";
 
 // User.
 function postRegisterUserHandler(
@@ -49,7 +56,7 @@ function postMeHandler(useCase: MessengerUseCase) {
       const user = await useCase.findUser(res.locals.userId);
       res.status(200).json({
         data: {
-          user: User.from(res.locals.userId as UserId, user),
+          user: toUser(res.locals.userId, user),
         },
       });
     } catch (err) {
@@ -64,7 +71,7 @@ function getSuggestedUsersHandler(useCase: MessengerUseCase) {
       const users = await useCase.findSuggestedUsers(res.locals.userId);
       res.status(200).json({
         data: {
-          users: User.fromArray(res.locals.userId as UserId, users),
+          users: toUsers(res.locals.userId, users),
         },
       });
     } catch (err) {
@@ -79,7 +86,7 @@ function searchUsersHandler(useCase: MessengerUseCase) {
       const users = await useCase.searchUsers(req.query.name as string);
       res.status(200).json({
         data: {
-          users: User.fromArray(res.locals.userId as UserId, users),
+          users: toUsers(res.locals.userId, users),
         },
       });
     } catch (err) {
@@ -93,12 +100,13 @@ function postCreateChatHandler(useCase: MessengerUseCase) {
   return async function (req: Request, res: Response, next: NextFunction) {
     try {
       const chat = await useCase.createChat(
+        req.query.type as string,
         res.locals.userId,
         req.body.userIds
       );
       res.status(201).json({
         data: {
-          chat,
+          chat: toChat(res.locals.userId, chat),
         },
       });
     } catch (err) {
@@ -114,8 +122,8 @@ function getAllChatsHandler(useCase: MessengerUseCase) {
 
       res.status(200).json({
         data: {
-          users,
-          chats,
+          users: toUsers(res.locals.userId, users),
+          chats: toChats(res.locals.userId, chats),
         },
       });
     } catch (err) {
@@ -130,14 +138,16 @@ function getChatByUserIdsHandler(useCase: MessengerUseCase) {
       const userIds = Array.isArray(req.query.userIds)
         ? req.query.userIds
         : [req.query.userIds];
+
       const chat = await useCase.findChatByUserIds(
+        req.query.type as string,
         res.locals.userId,
         userIds as string[]
       );
 
       res.status(200).json({
         data: {
-          chat,
+          chat: toChat(res.locals.userId, chat!),
         },
       });
     } catch (err) {
@@ -146,38 +156,19 @@ function getChatByUserIdsHandler(useCase: MessengerUseCase) {
   };
 }
 
-// ̦PrivateChat.
-function postCreatePrivateChatHandler(useCase: MessengerUseCase) {
+function postCreateChatMessageHandler(useCase: MessengerUseCase) {
   return async function (req: Request, res: Response, next: NextFunction) {
     try {
-      const chat = await useCase.createPrivateChat(
+      const message = await useCase.createChatMessage(
+        req.query.type as string,
         res.locals.userId,
-        req.body.otherUserId
-      );
-
-      res.status(201).json({
-        data: {
-          chat,
-        },
-      });
-    } catch (err) {
-      next(err);
-    }
-  };
-}
-
-function postCreatePrivateChatMessageHandler(useCase: MessengerUseCase) {
-  return async function (req: Request, res: Response, next: NextFunction) {
-    try {
-      const message = await useCase.createPrivateChatMessage(
-        req.params.privateChatId,
-        res.locals.userId,
+        req.params.chatId,
         req.body.body
       );
 
       res.status(201).json({
         data: {
-          message,
+          message: toChatMessage(res.locals.userId, message),
         },
       });
     } catch (err) {
@@ -186,75 +177,16 @@ function postCreatePrivateChatMessageHandler(useCase: MessengerUseCase) {
   };
 }
 
-function getPrivateChatMessagesHandler(useCase: MessengerUseCase) {
+function getChatMessagesHandler(useCase: MessengerUseCase) {
   return async function (req: Request, res: Response, next: NextFunction) {
     try {
-      const messages = await useCase.findAllPrivateChatMessages(
-        res.locals.userId,
-        req.params.privateChatId
+      const messages = await useCase.findAllChatMessages(
+        req.query.type as string,
+        req.params.chatId
       );
       res.status(200).json({
         data: {
-          messages,
-        },
-      });
-    } catch (err) {
-      next(err);
-    }
-  };
-}
-
-// GroupChat.
-function getGroupChatMessagesHandler(useCase: MessengerUseCase) {
-  return async function (req: Request, res: Response, next: NextFunction) {
-    try {
-      const messages = await useCase.findAllGroupChatMessages(
-        res.locals.userId,
-        req.params.groupChatId
-      );
-
-      res.status(200).json({
-        data: {
-          messages,
-        },
-      });
-    } catch (err) {
-      next(err);
-    }
-  };
-}
-
-function postCreateGroupChatHandler(useCase: MessengerUseCase) {
-  return async function (req: Request, res: Response, next: NextFunction) {
-    try {
-      const [chat, participants] = await useCase.createGroupChat(
-        res.locals.userId,
-        req.body.userIds
-      );
-
-      res.status(201).json({
-        data: {
-          chat,
-          participants,
-        },
-      });
-    } catch (err) {
-      next(err);
-    }
-  };
-}
-
-function postCreateGroupChatMessageHandler(useCase: MessengerUseCase) {
-  return async function (req: Request, res: Response, next: NextFunction) {
-    try {
-      const message = await useCase.createGroupChatMessage(
-        req.params.groupChatId,
-        res.locals.userId,
-        req.body.body
-      );
-      res.status(201).json({
-        data: {
-          message,
+          messages: toChatMessages(res.locals.userId, messages),
         },
       });
     } catch (err) {
@@ -279,15 +211,7 @@ export function createApi(
     postCreateChat: postCreateChatHandler(useCase),
     getAllChats: getAllChatsHandler(useCase),
     getChatByUserIds: getChatByUserIdsHandler(useCase),
-
-    // PrivateChat.
-    postCreatePrivateChat: postCreatePrivateChatHandler(useCase),
-    postCreatePrivateChatMessage: postCreatePrivateChatMessageHandler(useCase),
-    getPrivateChatMessages: getPrivateChatMessagesHandler(useCase),
-
-    // GroupChat.
-    postCreateGroupChat: postCreateGroupChatHandler(useCase),
-    postCreateGroupChatMessage: postCreateGroupChatMessageHandler(useCase),
-    getGroupChatMessages: getGroupChatMessagesHandler(useCase),
+    postCreateChatMessage: postCreateChatMessageHandler(useCase),
+    getChatMessages: getChatMessagesHandler(useCase),
   };
 }

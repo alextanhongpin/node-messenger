@@ -9,7 +9,7 @@ import { createUsecase } from "./usecase";
 
 export function create(sql: Sql, tokenCreator: TokenCreator): Router {
   const repo = createRepository(sql);
-  const useCase = createUsecase(repo, sql);
+  const useCase = createUsecase(repo);
   const api = createApi(useCase, tokenCreator);
 
   const router = Router();
@@ -27,25 +27,8 @@ export function create(sql: Sql, tokenCreator: TokenCreator): Router {
   router.post("/chats", api.postCreateChat);
   router.get("/chats", api.getAllChats);
   router.get("/chats/search", api.getChatByUserIds);
-
-  // PrivateChat.
-  router.post("/private-chats", api.postCreatePrivateChat);
-  router.post(
-    "/private-chats/:privateChatId/messages",
-    api.postCreatePrivateChatMessage
-  );
-  router.get(
-    "/private-chats/:privateChatId/messages",
-    api.getPrivateChatMessages
-  );
-
-  // GroupChat.
-  router.post("/group-chats", api.postCreateGroupChat);
-  router.post(
-    "/group-chats/:groupChatId/messages",
-    api.postCreateGroupChatMessage
-  );
-  router.get("/group-chats/:groupChatId/messages", api.getGroupChatMessages);
+  router.post("/chats/:chatId/messages", api.postCreateChatMessage);
+  router.get("/chats/:chatId/messages", api.getChatMessages);
 
   return router;
 }

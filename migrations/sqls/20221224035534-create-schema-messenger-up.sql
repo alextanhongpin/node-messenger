@@ -24,23 +24,19 @@ create trigger messenger_users_moddatetime
 
 create table messenger.private_chats (
 	id uuid default gen_random_uuid(),
+	user_id uuid not null,
 	user1_id uuid not null,
-	user2_id uuid not null,
-	hash text generated always as (case
-		when user1_id < user2_id then md5(user1_id::text || user2_id::text)
-		else md5(user2_id::text || user1_id::text)
-	end) stored,
+	user2_id uuid not null check (user1_id < user2_id),
 	created_at timestamptz not null default current_timestamp,
 	updated_at timestamptz not null default current_timestamp,
 
 	primary key (id),
-	unique(hash),
+	unique(user1_id, user2_id),
+	check (user_id in (user1_id, user2_id)),
+	foreign key (user_id) references messenger.users(id),
 	foreign key (user1_id) references messenger.users(id),
 	foreign key (user2_id) references messenger.users(id)
 );
-
-comment on column messenger.private_chats.hash is 'Hash is the combination of both user id in the chat, sorted and hashed to ensure uniqueness of the chat group.';
-
 
 create trigger messenger_private_chats_moddatetime
 	before update on messenger.private_chats

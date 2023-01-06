@@ -34,54 +34,11 @@ export abstract class AppError<T> extends Error {
   }
 }
 
-export type ForbiddenErrorParams = {
-  userId: string;
-  entity: string;
-  entityId: string;
-};
-
-export class ForbiddenError extends AppError<ForbiddenErrorParams> {
-  constructor(
-    { userId, entity, entityId }: ForbiddenErrorParams,
-    options?: ErrorOptions
-  ) {
-    super("You do not have access to the given resource", options);
-    this.kind = ErrorKind.Forbidden;
-    this.code = "entity.forbidden";
-    this.params = { userId, entity, entityId };
-  }
-}
-
-export class UnauthorizedError extends AppError<string> {
-  constructor(ipAddress: string, options?: ErrorOptions) {
-    super("You need to login to proceed", options);
-    this.kind = ErrorKind.Unauthorized;
-    this.code = "api.unauthorized";
-    this.params = ipAddress;
-  }
-}
-
-export class NotFoundError extends AppError<{
-  where: Record<string, unknown>;
-  entity: string;
-}> {
-  constructor(
-    entity: string,
-    where: Record<string, unknown>,
-    options?: ErrorOptions
-  ) {
-    super(`${entity} not found`, options);
-    this.kind = ErrorKind.NotFound;
-    this.code = "entity.not_found";
-    this.params = { entity, where };
-  }
-}
-
 export class RequiredFieldError extends AppError<string> {
   constructor(field: string, options?: ErrorOptions) {
     super(`field "${field}" is required`, options);
     this.kind = ErrorKind.BadInput;
-    this.code = "field.required";
+    this.code = "app.required";
     this.params = field;
   }
 }

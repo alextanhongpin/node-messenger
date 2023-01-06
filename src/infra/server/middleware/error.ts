@@ -1,6 +1,17 @@
 import { NextFunction, Request, Response } from "express";
 import { AppError, ErrorKind } from "types/error";
 
+class ApiError<T> extends AppError<T> {}
+
+export class UnauthorizedError extends ApiError<{ ipAddress: string }> {
+  constructor(ipAddress: string, options?: ErrorOptions) {
+    super("You need to login to proceed", options);
+    this.kind = ErrorKind.Unauthorized;
+    this.code = "api.unauthorized";
+    this.params = { ipAddress };
+  }
+}
+
 // NOTE: This must be attached last.
 export function errorHandler(
   err: unknown,

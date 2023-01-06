@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { UnauthorizedError } from "types/error";
+
+import { UnauthorizedError } from "./error";
 
 export function requireAuthHandler(
   req: Request,
@@ -39,7 +40,7 @@ export function authHandler(secret: string) {
 export function sign<T extends object>(
   secret: string,
   params: T,
-  expiresIn = "2d"
+  expiresIn = "1w"
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     jwt.sign(
