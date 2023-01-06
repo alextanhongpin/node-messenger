@@ -12,10 +12,10 @@ import type { Pagination } from "types/pagination";
 import { paginate } from "types/pagination";
 import type { ShortText } from "types/text";
 
-import type { ChatStore } from "./chat";
-import { createGroupChatStore, GroupChatStore } from "./group-chat";
-import { createPrivateChatStore, PrivateChatStore } from "./private-chat";
-import { createUserStore, UserStore } from "./user";
+import { createGroupChatStore, GroupChatStore } from "./group-chat-store";
+import { createPrivateChatStore, PrivateChatStore } from "./private-chat-store";
+import type { ChatStore } from "./types";
+import { createUserStore, UserStore } from "./user-store";
 
 class PostgresMessengerRepository implements MessengerRepository {
   privateChatStore: PrivateChatStore;

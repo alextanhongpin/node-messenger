@@ -6,8 +6,8 @@ import type { Pagination } from "types/pagination";
 import { paginate } from "types/pagination";
 import type { ShortText } from "types/text";
 
-import type { ChatStore } from "./chat";
 import { StoreError } from "./error";
+import type { ChatStore } from "./types";
 
 export type PrivateChat = {
   id: string;
@@ -94,7 +94,7 @@ export class PrivateChatStore implements ChatStore {
       where array(
         select unnest(array[user1_id, user2_id]) user_id order by user_id
       ) = array(
-        select unnest(${sql(userIds)}) user_id order by user_id
+        select unnest(${sql.array(userIds)}) user_id order by user_id
       )::uuid[]
     `;
     PrivateChatNotFoundError.validate({ userIds }, chat);

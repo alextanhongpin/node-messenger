@@ -6,8 +6,8 @@ import type { Pagination } from "types/pagination";
 import { paginate } from "types/pagination";
 import type { ShortText } from "types/text";
 
-import type { ChatStore } from "./chat";
 import { StoreError } from "./error";
+import type { ChatStore } from "./types";
 
 type GroupChat = {
   id: string;
@@ -108,8 +108,9 @@ export class GroupChatStore implements ChatStore {
 
   async findByUserIds(userIds: string[]): Promise<Chat> {
     validateRequiredFields({ userIds });
+    const sql = this.sql;
 
-    const [chat] = await this.sql<Chat[]>`
+    const [chat] = await sql<Chat[]>`
       select 
       	(array_agg(gc.id))[1] as id,
       	'group' as type,
@@ -121,7 +122,7 @@ export class GroupChatStore implements ChatStore {
       join messenger.group_chat_participants gcp on (gc.id = gcp.group_chat_id)
       group by gcp.group_chat_id
       having array_agg(gcp.user_id order by gcp.user_id) = array(
-        select unnest(${userIds}::uuid[]) user_id
+        select unnest(${sql.array(userIds)}::uuid[]) user_id
         order by user_id
       )::uuid[]
       limit 1

@@ -74,38 +74,34 @@ export class MessengerUseCase {
   }
 
   async findChatByUserIds(
-    type: string,
     userId: string,
     userIds: string[]
   ): Promise<Chat | undefined> {
-    validateRequiredFields({ type, userId, userIds });
-    assertIsChatType(type);
+    validateRequiredFields({ userId, userIds });
 
     const allUserIds = [...new Set(userIds.concat(userId))];
+    const type = allUserIds.length === 2 ? "private" : "group";
+    assertIsChatType(type);
     return this.repo.findChatByUserIds(type, allUserIds as UserId[]);
   }
 
-  async createChat(
-    type: string,
-    userId: UserId,
-    userIds: UserId[]
-  ): Promise<Chat> {
-    validateRequiredFields({ type, userId, userIds });
-    assertIsChatType(type);
+  async createChat(userId: UserId, userIds: UserId[]): Promise<Chat> {
+    validateRequiredFields({ userId, userIds });
 
-    // Add the existing user to the list of chat members.
-    userIds.push(userId);
+    const allUserIds = [...new Set(userIds.concat(userId))];
+    const type = allUserIds.length === 2 ? "private" : "group";
+    assertIsChatType(type);
 
     switch (type) {
       case "private":
-        PrivateChatUsersCountError.validate(userIds.length);
+        PrivateChatUsersCountError.validate(allUserIds.length);
         break;
       case "group":
-        GroupChatUsersCountError.validate(userIds.length);
-        GroupChatDuplicateUsersError.validate(userIds);
+        GroupChatUsersCountError.validate(allUserIds.length);
+        GroupChatDuplicateUsersError.validate(allUserIds);
         break;
     }
-    return this.repo.createChat(type, userId, userIds);
+    return this.repo.createChat(type, userId, allUserIds);
   }
 
   async createChatMessage(

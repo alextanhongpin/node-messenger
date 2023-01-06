@@ -100,7 +100,6 @@ function postCreateChatHandler(useCase: MessengerUseCase) {
   return async function (req: Request, res: Response, next: NextFunction) {
     try {
       const chat = await useCase.createChat(
-        req.query.type as string,
         res.locals.userId,
         req.body.userIds
       );
@@ -140,7 +139,6 @@ function getChatByUserIdsHandler(useCase: MessengerUseCase) {
         : [req.query.userIds];
 
       const chat = await useCase.findChatByUserIds(
-        req.query.type as string,
         res.locals.userId,
         userIds as string[]
       );
