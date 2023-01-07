@@ -1,10 +1,11 @@
+import EventEmitter from "events";
 import { create } from "features/messenger";
 import * as config from "infra/config";
 import { createConn } from "infra/postgres";
 import { createApp, start } from "infra/server";
 import { authHandler, errorHandler } from "infra/server/middleware";
 import type { Claims } from "infra/server/middleware/auth";
-import { sign } from "infra/server/middleware/auth";
+import { sign, verify } from "infra/server/middleware/auth";
 
 async function main() {
   const app = createApp();
@@ -13,9 +14,13 @@ async function main() {
   app.use(authHandler(config.jwt.secret));
 
   const createToken = (userId: string) =>
-    sign(config.jwt.secret, { userId } as Claims);
+    sign<Claims>(config.jwt.secret, { userId } as Claims);
 
-  const api = create(sql, createToken);
+  const verifyToken = (token: string) =>
+    verify<Claims>(config.jwt.secret, token);
+
+  const eventEmitter = new EventEmitter();
+  const api = create(sql, createToken, verifyToken, eventEmitter);
   app.use("/", api);
 
   // NOTE: This must be the last route.

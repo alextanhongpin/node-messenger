@@ -123,6 +123,8 @@ export class MessengerUseCase {
   ): Promise<ChatMessage[]> {
     validateRequiredFields({ type, chatId });
     assertIsChatType(type);
+    // TODO: Check for permission?
+    //findChat()
 
     return this.repo.findAllChatMessages(type, chatId);
   }

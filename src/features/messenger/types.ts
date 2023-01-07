@@ -45,6 +45,10 @@ export type TokenCreator = {
   (userId: string): Promise<string>;
 };
 
+export type TokenVerifier = {
+  (token: string): Promise<{ userId: string }>;
+};
+
 export interface MessengerRepository {
   // User.
   createUser(name: string): Promise<User>;
