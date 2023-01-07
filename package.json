@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "dev": "NODE_PATH=./src nodemon",
-    "build": "tsc",
+    "build": "./node_modules/.bin/tsc",
     "start": "NODE_PATH=./dist node dist/index.js",
     "lint": "eslint --fix . --ext .ts"
   },
