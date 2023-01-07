@@ -19,11 +19,16 @@ export function start(app: Express, port: number) {
     console.log(`listening to port *:${port}. press ctrl + c to cancel`);
   });
 
-  // Graceful shutdown;.
-  process.on("SIGTERM", () => {
+  // Reference: https://snyk.io/blog/10-best-practices-to-containerize-nodejs-web-applications-with-docker/
+  function closeGracefully(signal: number) {
     console.debug("SIGTERM signal received: closing HTTP server");
     server.close(() => {
       console.debug("HTTP server closed");
+      process.kill(process.pid, signal);
     });
-  });
+  }
+
+  // Graceful shutdown;.
+  process.on("SIGINT", closeGracefully);
+  process.on("SIGTERM", closeGracefully);
 }

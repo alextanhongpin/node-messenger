@@ -5,6 +5,7 @@
 //
 // Validation will be performed by the caller using the
 // environment variables.
+import { v4 as uuidv4 } from "uuid";
 
 export const db = {
   host: process.env.DB_HOST ?? "",
@@ -16,6 +17,7 @@ export const db = {
 };
 
 export const server = {
+  id: uuidv4(),
   port: Number(process.env.PORT ?? 3000),
 };
 

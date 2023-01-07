@@ -1,4 +1,5 @@
 import EventEmitter from "events";
+import { Response } from "express";
 import { create } from "features/messenger";
 import * as config from "infra/config";
 import { createConn } from "infra/postgres";
@@ -21,6 +22,11 @@ async function main() {
 
   const eventEmitter = new EventEmitter();
   const api = create(sql, createToken, verifyToken, eventEmitter);
+  app.get("/health", function (_, res: Response) {
+    res.status(200).json({
+      id: config.server.id,
+    });
+  });
   app.use("/", api);
 
   // NOTE: This must be the last route.
