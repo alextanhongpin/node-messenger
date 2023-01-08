@@ -25,6 +25,20 @@ export interface ChatMessageResponse {
   createdAt: Date;
 }
 
+export class SSEResponse<T> {
+  constructor(private id: string, private data: T, private event?: string) {}
+
+  toString(): string {
+    const response = [];
+    if (this.event) response.push(`event: ${this.event}`);
+    if (this.data) response.push(`data: ${JSON.stringify(this.data)}`);
+    // NOTE: The id is appended below message data by the server, to ensure that lastEventId is updated after the message is received.
+    if (this.id) response.push(`id: ${this.id}`);
+    const result = response.join("\n");
+    return `${result}\n\n`;
+  }
+}
+
 export function toUser(currUserId: UserId, user: User): UserResponse {
   const { id, name, imageUrl } = user;
 
