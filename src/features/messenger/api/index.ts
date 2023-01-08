@@ -110,21 +110,43 @@ async function getChatMessageEventsHandler(
   const subscriber = await redisClient.duplicate();
   await subscriber.connect();
   await subscriber.subscribe(hostname, (rawMessage: string) => {
-    console.log("subscribed to:", hostname);
     try {
-      const msg: ChatMessage = JSON.parse(rawMessage);
-      if (!(msg.chatId in userIdsByChatId)) {
-        return;
-      }
-      const userIds = [...userIdsByChatId[msg.chatId]];
-      for (const userId of userIds) {
-        emit(
-          userId,
-          new SSEResponse<ChatMessageResponse>(
-            msg.id,
-            toChatMessage(userId as UserId, msg)
-          )
-        );
+      const { type, data }: { type: string; data: Record<string, unknown> } =
+        JSON.parse(rawMessage);
+      if (type === "chat.message_created") {
+        const msg = data.message as ChatMessage;
+        if (!(msg.chatId in userIdsByChatId)) {
+          return;
+        }
+        const userIds = [...userIdsByChatId[msg.chatId]];
+        for (const userId of userIds) {
+          emit(
+            userId,
+            new SSEResponse<ChatMessageResponse>(
+              msg.id,
+              toChatMessage(userId as UserId, msg)
+            )
+          );
+        }
+      } else if (type === "chat.is_typing") {
+        const chatId = data.chatId as string;
+        const currUserId = data.userId as string;
+        if (!(chatId in userIdsByChatId)) {
+          return;
+        }
+        const userIds = [...userIdsByChatId[chatId]];
+        for (const userId of userIds) {
+          emit(
+            userId,
+            new SSEResponse<{ userId: string }>(
+              userId,
+              { userId: currUserId }, // The current user id that is typing.
+              "is_typing"
+            )
+          );
+        }
+      } else {
+        throw new Error(`not implemented: ${type}`);
       }
     } catch (error) {
       console.error(error);
@@ -134,17 +156,31 @@ async function getChatMessageEventsHandler(
   const publisher = await redisClient.duplicate();
   await publisher.connect();
 
-  eventEmitter.on("message", async (userId: UserId, message: ChatMessage) => {
-    const hostnames = await redisClient.SMEMBERS(
-      `chat:${message.chatId}:hosts`
-    );
-    console.log("received message, potential hostnames", hostnames);
-    const promises = hostnames.map((hostname: string) =>
-      publisher.publish(hostname, JSON.stringify(message))
-    );
-    const data = await Promise.allSettled(promises);
-    console.log({ data });
-  });
+  eventEmitter.on(
+    "message",
+    async (payload: { type: string; data: Record<string, unknown> }) => {
+      const { type, data } = payload;
+      if (type === "chat.message_created") {
+        const message = data.message as ChatMessage;
+        const hostnames = await redisClient.SMEMBERS(
+          `chat:${message.chatId}:hosts`
+        );
+        const promises = hostnames.map((hostname: string) =>
+          publisher.publish(hostname, JSON.stringify(payload))
+        );
+        await Promise.allSettled(promises);
+      } else if (type === "chat.is_typing") {
+        const chatId = data.chatId as string;
+        const hostnames = await redisClient.SMEMBERS(`chat:${chatId}:hosts`);
+        const promises = hostnames.map((hostname: string) =>
+          publisher.publish(hostname, JSON.stringify(payload))
+        );
+        await Promise.allSettled(promises);
+      } else {
+        throw new Error(`not implemented: ${type}`);
+      }
+    }
+  );
 
   return async function (req: Request, res: Response, next: NextFunction) {
     try {
@@ -174,7 +210,6 @@ async function getChatMessageEventsHandler(
 
       const interval = setInterval(async () => {
         // Every minute, set the chat room to expire after 2 minutes.
-        console.log("refresh");
         await redisClient.EXPIRE(`chat:${chatId}:hosts`, 2 * MINUTE, "GT");
       }, MINUTE);
 
@@ -373,7 +408,10 @@ function postCreateChatMessageHandler(
         req.body.body
       );
 
-      eventEmitter.emit("message", res.locals.userId as UserId, message);
+      eventEmitter.emit("message", {
+        type: "chat.message_created",
+        data: { message, userId: res.locals.userId },
+      });
 
       res.status(201).json({
         data: {
@@ -383,6 +421,16 @@ function postCreateChatMessageHandler(
     } catch (err) {
       next(err);
     }
+  };
+}
+
+function postCreateChatMessageEventHandler(eventEmitter: EventEmitter) {
+  return async function (req: Request, res: Response) {
+    eventEmitter.emit("message", {
+      type: "chat.is_typing",
+      data: { chatId: req.params.chatId, userId: res.locals.userId },
+    });
+    return res.status(204);
   };
 }
 
@@ -427,6 +475,7 @@ export async function createApi(
     getAllChats: getAllChatsHandler(useCase, presenceUseCase),
     getChatByUserIds: getChatByUserIdsHandler(useCase),
     postCreateChatMessage: postCreateChatMessageHandler(useCase, eventEmitter),
+    postCreateChatMessageEvent: postCreateChatMessageEventHandler(eventEmitter),
     getChatMessages: getChatMessagesHandler(useCase),
     getChatMessageEvents: await getChatMessageEventsHandler(
       useCase,

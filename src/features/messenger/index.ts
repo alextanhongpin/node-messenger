@@ -55,6 +55,7 @@ export async function create(
   router.get("/users/search", api.searchUsers);
 
   // Chat.
+  router.post("/chats/:chatId/messages/events", api.postCreateChatMessageEvent);
   router.post("/chats", api.postCreateChat);
   router.get("/chats", api.getAllChats);
   router.get("/chats/search", api.getChatByUserIds);
