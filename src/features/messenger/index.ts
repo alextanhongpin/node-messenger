@@ -1,5 +1,7 @@
 import EventEmitter from "events";
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
+import { PresenceUseCase } from "features/presence";
 import type { Sql } from "infra/postgres";
 import type { RedisClient } from "infra/redis";
 import { requireAuthHandler } from "infra/server/middleware";
@@ -19,8 +21,10 @@ export async function create(
 ): Promise<Router> {
   const repo = createRepository(sql);
   const useCase = createUsecase(repo);
+  const presenceUseCase = new PresenceUseCase(redisClient);
   const api = await createApi(
     useCase,
+    presenceUseCase,
     tokenCreator,
     tokenVerifier,
     eventEmitter,
@@ -30,6 +34,14 @@ export async function create(
 
   const router = Router();
 
+  const apiLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 12, // Limit each IP to 12 requests per `window` (here, per 1 minutes, aka 1 request every 5 seconds)
+    //message: 'Too many requests. Please try again later'.
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  });
+
   // Public route.
   router.post("/register", api.postRegisterUser);
   router.post("/login", api.postLoginUser);
@@ -38,6 +50,7 @@ export async function create(
   // Private route.
   router.use(requireAuthHandler);
   router.post("/me", api.postMe);
+  router.post("/me/online", apiLimiter, api.postOnlineStatus);
   router.get("/users/suggested", api.getSuggestedUsers);
   router.get("/users/search", api.searchUsers);
 

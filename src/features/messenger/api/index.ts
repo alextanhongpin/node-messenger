@@ -4,9 +4,11 @@ import type {
   ChatMessage,
   TokenCreator,
   TokenVerifier,
+  User,
   UserId,
 } from "features/messenger/types";
 import { MessengerUseCase } from "features/messenger/usecase";
+import { PresenceUseCase } from "features/presence";
 import { RedisClient } from "infra/redis";
 import { v4 as uuidv4 } from "uuid";
 
@@ -187,6 +189,17 @@ async function getChatMessageEventsHandler(
   };
 }
 
+function postOnlineStatusHandler(useCase: PresenceUseCase) {
+  return async function (req: Request, res: Response, next: NextFunction) {
+    try {
+      await useCase.online(res.locals.userId);
+      return res.status(204);
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
 function postRegisterUserHandler(
   useCase: MessengerUseCase,
   createToken: TokenCreator
@@ -240,13 +253,20 @@ function postMeHandler(useCase: MessengerUseCase) {
   };
 }
 
-function getSuggestedUsersHandler(useCase: MessengerUseCase) {
+function getSuggestedUsersHandler(
+  useCase: MessengerUseCase,
+  presenceUseCase: PresenceUseCase
+) {
   return async function (req: Request, res: Response, next: NextFunction) {
     try {
       const users = await useCase.findSuggestedUsers(res.locals.userId);
+
+      const userIds = users.map((user: User) => user.id);
+      const onlineStatusByUserId = await presenceUseCase.isOnlineMulti(userIds);
+
       res.status(200).json({
         data: {
-          users: toUsers(res.locals.userId, users),
+          users: toUsers(res.locals.userId, users, onlineStatusByUserId),
         },
       });
     } catch (err) {
@@ -255,13 +275,18 @@ function getSuggestedUsersHandler(useCase: MessengerUseCase) {
   };
 }
 
-function searchUsersHandler(useCase: MessengerUseCase) {
+function searchUsersHandler(
+  useCase: MessengerUseCase,
+  presenceUseCase: PresenceUseCase
+) {
   return async function (req: Request, res: Response, next: NextFunction) {
     try {
       const users = await useCase.searchUsers(req.query.name as string);
+      const userIds = users.map((user: User) => user.id);
+      const onlineStatusByUserId = await presenceUseCase.isOnlineMulti(userIds);
       res.status(200).json({
         data: {
-          users: toUsers(res.locals.userId, users),
+          users: toUsers(res.locals.userId, users, onlineStatusByUserId),
         },
       });
     } catch (err) {
@@ -289,14 +314,20 @@ function postCreateChatHandler(useCase: MessengerUseCase) {
   };
 }
 
-function getAllChatsHandler(useCase: MessengerUseCase) {
+function getAllChatsHandler(
+  useCase: MessengerUseCase,
+  presenceUseCase: PresenceUseCase
+) {
   return async function (req: Request, res: Response, next: NextFunction) {
     try {
       const { users, chats } = await useCase.findAllChats(res.locals.userId);
 
+      const userIds = users.map((user: User) => user.id);
+      const onlineStatusByUserId = await presenceUseCase.isOnlineMulti(userIds);
+
       res.status(200).json({
         data: {
-          users: toUsers(res.locals.userId, users),
+          users: toUsers(res.locals.userId, users, onlineStatusByUserId),
           chats: toChats(res.locals.userId, chats),
         },
       });
@@ -375,6 +406,7 @@ function getChatMessagesHandler(useCase: MessengerUseCase) {
 
 export async function createApi(
   useCase: MessengerUseCase,
+  presenceUseCase: PresenceUseCase,
   createToken: TokenCreator,
   verifyToken: TokenVerifier,
   eventEmitter: EventEmitter,
@@ -386,12 +418,13 @@ export async function createApi(
     postRegisterUser: postRegisterUserHandler(useCase, createToken),
     postLoginUser: postLoginUserHandler(useCase, createToken),
     postMe: postMeHandler(useCase),
-    searchUsers: searchUsersHandler(useCase),
-    getSuggestedUsers: getSuggestedUsersHandler(useCase),
+    postOnlineStatus: postOnlineStatusHandler(presenceUseCase),
+    searchUsers: searchUsersHandler(useCase, presenceUseCase),
+    getSuggestedUsers: getSuggestedUsersHandler(useCase, presenceUseCase),
 
     // Chat.
     postCreateChat: postCreateChatHandler(useCase),
-    getAllChats: getAllChatsHandler(useCase),
+    getAllChats: getAllChatsHandler(useCase, presenceUseCase),
     getChatByUserIds: getChatByUserIdsHandler(useCase),
     postCreateChatMessage: postCreateChatMessageHandler(useCase, eventEmitter),
     getChatMessages: getChatMessagesHandler(useCase),

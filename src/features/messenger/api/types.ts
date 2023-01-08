@@ -3,6 +3,7 @@ import type { Chat, ChatMessage, User, UserId } from "features/messenger/types";
 export interface UserResponse {
   id: string;
   me: boolean;
+  isOnline?: boolean;
   name: string;
   imageUrl: string;
 }
@@ -39,19 +40,30 @@ export class SSEResponse<T> {
   }
 }
 
-export function toUser(currUserId: UserId, user: User): UserResponse {
+export function toUser(
+  currUserId: UserId,
+  user: User,
+  onlineStatusByUserId?: Record<string, boolean>
+): UserResponse {
   const { id, name, imageUrl } = user;
 
   return {
     id,
     me: id === currUserId,
+    isOnline: onlineStatusByUserId?.[id] ?? false,
     name,
     imageUrl,
   };
 }
 
-export function toUsers(currUserId: UserId, users: User[]): UserResponse[] {
-  return users.map((user: User) => toUser(currUserId, user));
+export function toUsers(
+  currUserId: UserId,
+  users: User[],
+  onlineStatusByUserId?: Record<string, boolean>
+): UserResponse[] {
+  return users.map((user: User) =>
+    toUser(currUserId, user, onlineStatusByUserId)
+  );
 }
 
 export function toChat(currUserId: UserId, chat: Chat): ChatResponse {
