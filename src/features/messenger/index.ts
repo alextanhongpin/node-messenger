@@ -1,6 +1,7 @@
 import EventEmitter from "events";
 import { Router } from "express";
 import type { Sql } from "infra/postgres";
+import type { RedisClient } from "infra/redis";
 import { requireAuthHandler } from "infra/server/middleware";
 
 import { createApi } from "./api";
@@ -8,15 +9,24 @@ import { createRepository } from "./repository";
 import type { TokenCreator, TokenVerifier } from "./types";
 import { createUsecase } from "./usecase";
 
-export function create(
+export async function create(
   sql: Sql,
   tokenCreator: TokenCreator,
   tokenVerifier: TokenVerifier,
-  eventEmitter: EventEmitter
-): Router {
+  eventEmitter: EventEmitter,
+  redisClient: RedisClient,
+  hostname: string
+): Promise<Router> {
   const repo = createRepository(sql);
   const useCase = createUsecase(repo);
-  const api = createApi(useCase, tokenCreator, tokenVerifier, eventEmitter);
+  const api = await createApi(
+    useCase,
+    tokenCreator,
+    tokenVerifier,
+    eventEmitter,
+    redisClient,
+    hostname
+  );
 
   const router = Router();
 

@@ -5,7 +5,7 @@
 //
 // Validation will be performed by the caller using the
 // environment variables.
-import { v4 as uuidv4 } from "uuid";
+import os from "os";
 
 export const db = {
   host: process.env.DB_HOST ?? "",
@@ -17,10 +17,15 @@ export const db = {
 };
 
 export const server = {
-  id: uuidv4(),
+  hostname: os.hostname(),
   port: Number(process.env.PORT ?? 3000),
 };
 
 export const jwt = {
   secret: process.env.JWT_SECRET ?? "",
+};
+
+export const redis = {
+  host: process.env.REDIS_HOST ?? "localhost",
+  port: Number(process.env.REDIS_PORT ?? 6379),
 };

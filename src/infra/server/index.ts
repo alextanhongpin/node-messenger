@@ -12,7 +12,11 @@ export function createApp(): Express {
   return app;
 }
 
-export function start(app: Express, port: number) {
+export function start(
+  app: Express,
+  port: number,
+  ...closeFns: Array<() => Promise<void>>
+) {
   if (!port) throw new Error("PORT not specified");
 
   const server = app.listen(port, () => {
@@ -22,13 +26,14 @@ export function start(app: Express, port: number) {
   // Reference: https://snyk.io/blog/10-best-practices-to-containerize-nodejs-web-applications-with-docker/
   function closeGracefully(signal: number) {
     console.debug("SIGTERM signal received: closing HTTP server");
-    server.close(() => {
+    server.close(async () => {
       console.debug("HTTP server closed");
+      await Promise.all(closeFns.map((fn) => fn()));
       process.kill(process.pid, signal);
     });
   }
 
   // Graceful shutdown;.
-  process.on("SIGINT", closeGracefully);
-  process.on("SIGTERM", closeGracefully);
+  process.once("SIGINT", closeGracefully);
+  process.once("SIGTERM", closeGracefully);
 }

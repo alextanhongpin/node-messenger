@@ -24,7 +24,13 @@ export function createConn(options: Options) {
     transform: postgres.camel,
   });
 
-  return sql;
+  return {
+    sql,
+    close: () => {
+      console.log("closing postgres");
+      return sql.end();
+    },
+  };
 }
 
 function debugLogger(

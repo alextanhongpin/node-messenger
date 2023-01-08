@@ -7,6 +7,7 @@ import type {
   UserId,
 } from "features/messenger/types";
 import { MessengerUseCase } from "features/messenger/usecase";
+import { RedisClient } from "infra/redis";
 import { v4 as uuidv4 } from "uuid";
 
 import {
@@ -18,6 +19,8 @@ import {
   toUser,
   toUsers,
 } from "./types";
+
+const MINUTE = 60_000;
 
 class SSEResponse<T> {
   constructor(private id: string, private data: T, private event?: string) {}
@@ -33,15 +36,26 @@ class SSEResponse<T> {
   }
 }
 
-function getChatMessageEventsHandler(
+async function getChatMessageEventsHandler(
   useCase: MessengerUseCase,
   eventEmitter: EventEmitter,
-  verifyToken: TokenVerifier
+  verifyToken: TokenVerifier,
+  redisClient: RedisClient,
+  hostname: string
 ) {
   const headers = {
     "Content-Type": "text/event-stream;charset=UTF-8",
     Connection: "keep-alive",
     "Cache-Control": "no-cache",
+    // Disables buffering for Nginx. Required for SSE to work with Nginx.
+    //
+    // Explanation here:
+    // https://www.nginx.com/resources/wiki/start/topics/examples/x-accel/
+    //
+    // Setting this to "no" will allow unbuffered responses suitable for Comet
+    // and HTTP streaming applications. Setting this to "yes" will allow the
+    // response to be cached.
+    "X-Accel-Buffering": "no",
   };
 
   // One chat id can be subscribed by multiple users.
@@ -52,12 +66,6 @@ function getChatMessageEventsHandler(
 
   // One user id can have multiple client ids (opening multiple tabs).
   const clientIdsByUserId: Record<string, Set<string>> = {};
-
-  function broadcast<T>(data: T) {
-    for (const res of Object.values(resByClientId)) {
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
-    }
-  }
 
   function emit<T>(userId: string, sse: SSEResponse<T>) {
     if (!(userId in clientIdsByUserId)) {
@@ -99,36 +107,55 @@ function getChatMessageEventsHandler(
     delete resByClientId[clientId];
 
     // Delete client.
-    clientIdsByUserId[userId].delete(clientId);
-    if (!clientIdsByUserId[userId].size) {
+    clientIdsByUserId[userId]?.delete(clientId);
+    if (!clientIdsByUserId[userId]?.size) {
       delete clientIdsByUserId[userId];
     }
     // Delete users
-    userIdsByChatId[chatId].delete(userId);
-    if (!userIdsByChatId[chatId].size) {
+    userIdsByChatId[chatId]?.delete(userId);
+    if (!userIdsByChatId[chatId]?.size) {
       delete userIdsByChatId[chatId];
     }
   }
 
-  eventEmitter.on("message", (currUserId: UserId, msg: ChatMessage) => {
-    if (!(msg.chatId in userIdsByChatId)) {
-      return;
-    }
-    const userIds = [...userIdsByChatId[msg.chatId]];
-    for (const userId of userIds) {
-      emit(
-        userId,
-        new SSEResponse<ChatMessageResponse>(
-          msg.id,
-          toChatMessage(userId as UserId, msg)
-        )
-      );
+  const subscriber = await redisClient.duplicate();
+  await subscriber.connect();
+  await subscriber.subscribe(hostname, (rawMessage: string) => {
+    console.log("subscribed to:", hostname);
+    try {
+      const msg: ChatMessage = JSON.parse(rawMessage);
+      if (!(msg.chatId in userIdsByChatId)) {
+        return;
+      }
+      const userIds = [...userIdsByChatId[msg.chatId]];
+      for (const userId of userIds) {
+        emit(
+          userId,
+          new SSEResponse<ChatMessageResponse>(
+            msg.id,
+            toChatMessage(userId as UserId, msg)
+          )
+        );
+      }
+    } catch (error) {
+      console.error(error);
     }
   });
 
-  //setInterval(() => {
-  //broadcast({ time: Date.now() });
-  //}, 10_000);
+  const publisher = await redisClient.duplicate();
+  await publisher.connect();
+
+  eventEmitter.on("message", async (userId: UserId, message: ChatMessage) => {
+    const hostnames = await redisClient.SMEMBERS(
+      `chat:${message.chatId}:hosts`
+    );
+    console.log("received message, potential hostnames", hostnames);
+    const promises = hostnames.map((hostname: string) =>
+      publisher.publish(hostname, JSON.stringify(message))
+    );
+    const data = await Promise.allSettled(promises);
+    console.log({ data });
+  });
 
   return async function (req: Request, res: Response, next: NextFunction) {
     try {
@@ -153,10 +180,19 @@ function getChatMessageEventsHandler(
       res.write(initial.toString());
 
       const clientId = register(userId, chatId, res);
-      //const data = `data: ${JSON.stringify({ name: "john" })}\n\n`;
+      // Register the chat.
+      await redisClient.SADD(`chat:${chatId}:hosts`, hostname);
 
-      req.on("close", () => {
+      const interval = setInterval(async () => {
+        // Every minute, set the chat room to expire after 2 minutes.
+        console.log("refresh");
+        await redisClient.EXPIRE(`chat:${chatId}:hosts`, 2 * MINUTE, "GT");
+      }, MINUTE);
+
+      req.on("close", async () => {
         deregister(userId, chatId, clientId);
+        await redisClient.SREM(`chat:${chatId}:hosts`, hostname);
+        clearInterval(interval);
       });
     } catch (error) {
       next(error);
@@ -350,11 +386,13 @@ function getChatMessagesHandler(useCase: MessengerUseCase) {
   };
 }
 
-export function createApi(
+export async function createApi(
   useCase: MessengerUseCase,
   createToken: TokenCreator,
   verifyToken: TokenVerifier,
-  eventEmitter: EventEmitter
+  eventEmitter: EventEmitter,
+  redisClient: RedisClient,
+  hostname: string
 ) {
   return {
     // User.
@@ -370,10 +408,12 @@ export function createApi(
     getChatByUserIds: getChatByUserIdsHandler(useCase),
     postCreateChatMessage: postCreateChatMessageHandler(useCase, eventEmitter),
     getChatMessages: getChatMessagesHandler(useCase),
-    getChatMessageEvents: getChatMessageEventsHandler(
+    getChatMessageEvents: await getChatMessageEventsHandler(
       useCase,
       eventEmitter,
-      verifyToken
+      verifyToken,
+      redisClient,
+      hostname
     ),
   };
 }
