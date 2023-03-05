@@ -6,6 +6,7 @@ create schema messenger;
 create table messenger.users (
 	id uuid default gen_random_uuid(),
 	name text not null,
+	image_url text null,
 
 	primary key (id),
 	created_at timestamptz not null default current_timestamp,
@@ -16,26 +17,29 @@ create table messenger.users (
 
 -- The name cannot be schema-qualified — the trigger inherits the schema of its table.
 create trigger messenger_users_moddatetime
-	before insert or update on messenger.users
+	before update on messenger.users
 	for each row
 	execute procedure moddatetime(updated_at);
 
 
 create table messenger.private_chats (
 	id uuid default gen_random_uuid(),
+	user_id uuid not null,
 	user1_id uuid not null,
-	user2_id uuid not null,
+	user2_id uuid not null check (user1_id < user2_id),
 	created_at timestamptz not null default current_timestamp,
 	updated_at timestamptz not null default current_timestamp,
 
 	primary key (id),
+	unique(user1_id, user2_id),
+	check (user_id in (user1_id, user2_id)),
+	foreign key (user_id) references messenger.users(id),
 	foreign key (user1_id) references messenger.users(id),
 	foreign key (user2_id) references messenger.users(id)
 );
 
-
 create trigger messenger_private_chats_moddatetime
-	before insert or update on messenger.private_chats
+	before update on messenger.private_chats
 	for each row
 	execute procedure moddatetime(updated_at);
 
@@ -55,7 +59,7 @@ create table messenger.private_chat_messages (
 
 
 create trigger messenger_private_chat_messages_moddatetime
-	before insert or update on messenger.private_chat_messages
+	before update on messenger.private_chat_messages
 	for each row
 	execute procedure moddatetime(updated_at);
 
@@ -72,7 +76,7 @@ create table messenger.group_chats (
 
 
 create trigger messenger_group_chats_moddatetime
-	before insert or update on messenger.group_chats
+	before update on messenger.group_chats
 	for each row
 	execute procedure moddatetime(updated_at);
 
@@ -92,7 +96,7 @@ create table messenger.group_chat_participants (
 
 
 create trigger messenger_group_chat_participants_moddatetime
-	before insert or update on messenger.group_chat_participants
+	before update on messenger.group_chat_participants
 	for each row
 	execute procedure moddatetime(updated_at);
 
@@ -112,6 +116,6 @@ create table messenger.group_chat_messages (
 
 
 create trigger messenger_group_chat_messages_moddatetime
-	before insert or update on messenger.group_chat_messages
+	before update on messenger.group_chat_messages
 	for each row
 	execute procedure moddatetime(updated_at);

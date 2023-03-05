@@ -1,0 +1,423 @@
+{
+	"info": {
+		"_postman_id": "90ee666a-d3ab-4144-a1ba-dd2fbe4b4192",
+		"name": "Node Messenger",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Post Register",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"bob\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{host}}/register",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Post Login",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const json = pm.response.json()",
+							"",
+							"pm.collectionVariables.set('token', json.data.token)"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"john\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{host}}/login",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Post Me",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const json = pm.response.json()",
+							"",
+							"pm.collectionVariables.set('token', json.data.token)"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "javascript"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{host}}/me",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"me"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Chats",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{host}}/chats",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"chats"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Chat",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"userIds\": [\"88119b98-afd4-4462-b5ee-14212ab8d190\", \"ae73a755-5828-4a5c-80bb-90932f7d1ebf\"]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{host}}/chats?type=group",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"chats"
+					],
+					"query": [
+						{
+							"key": "type",
+							"value": "group"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Chat Message",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"body\":  \"world\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{host}}/chats/ca2ebbf8-efe7-477a-97ca-44824a5cc152/messages?type=group",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"chats",
+						"ca2ebbf8-efe7-477a-97ca-44824a5cc152",
+						"messages"
+					],
+					"query": [
+						{
+							"key": "type",
+							"value": "group"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Chat Messages",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"body\":  \"hello world\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{host}}/chats/efcc49f5-3e43-4595-85cc-1c4238ec69b1/messages?type=private",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"chats",
+						"efcc49f5-3e43-4595-85cc-1c4238ec69b1",
+						"messages"
+					],
+					"query": [
+						{
+							"key": "type",
+							"value": "private"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Chat by User IDs",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{host}}/chats/search?type=group&userIds=88119b98-afd4-4462-b5ee-14212ab8d190&userIds=ae73a755-5828-4a5c-80bb-90932f7d1ebf&userIds=d672c5f3-55cb-46d3-b537-02b029982b32",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"chats",
+						"search"
+					],
+					"query": [
+						{
+							"key": "type",
+							"value": "group"
+						},
+						{
+							"key": "userIds",
+							"value": "88119b98-afd4-4462-b5ee-14212ab8d190"
+						},
+						{
+							"key": "userIds",
+							"value": "ae73a755-5828-4a5c-80bb-90932f7d1ebf"
+						},
+						{
+							"key": "userIds",
+							"value": "d672c5f3-55cb-46d3-b537-02b029982b32"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "host",
+			"value": "localhost:3000",
+			"type": "default"
+		},
+		{
+			"key": "token",
+			"value": ""
+		}
+	]
+}

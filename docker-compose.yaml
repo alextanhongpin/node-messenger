@@ -11,6 +11,28 @@ services:
       POSTGRES_PASSWORD: ${DB_PASS:?err}
     volumes:
       - db:/var/lib/postgresql/data
+  redis:
+    image: redis:7.0.7-alpine
+    ports:
+      - 127.0.0.1:6379:6379
+  api:
+    image: node-messenger:latest
+    scale: 3
+    ports:
+      - 3000
+    env_file:
+      - .env
+    environment:
+      REDIS_HOST: redis
+      DB_HOST: db
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+    ports:
+      - 127.0.0.1:3000:3000
 
 volumes:
   db:
